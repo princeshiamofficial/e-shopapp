@@ -1,0 +1,1539 @@
+"use client";
+
+import { useEffect } from "react";
+import Script from "next/script";
+
+export default function ShopPage() {
+  useEffect(() => {
+    // Ported from index.html
+    
+    function initSwipers() {
+      // @ts-ignore
+      if (typeof Swiper === 'undefined') return;
+      document.querySelectorAll('.swiper').forEach(function (el) {
+        // @ts-ignore
+        if (el.swiper) return;
+        // @ts-ignore
+        new Swiper(el, {
+          slidesPerView: 'auto',
+          spaceBetween: 8,
+          freeMode: true,
+          grabCursor: true,
+          mousewheel: false,
+          keyboard: { enabled: true },
+          breakpoints: { 480: { spaceBetween: 16 } }
+        });
+      });
+    }
+
+    function initScrollSearch() {
+      var heroSearchWrapper = document.querySelector('[data-testid="omnibox-container"]');
+      var desktopWrapper    = document.querySelector('[data-testid="desktop-search-wrapper"]');
+      var mobileBtn         = document.querySelector('[data-testid="scroll-search-button-mobile"]');
+
+      if (!heroSearchWrapper) return;
+
+      function showScrollSearch() {
+        if (desktopWrapper) {
+          const el = desktopWrapper;
+          el.removeAttribute('inert');
+          el.classList.remove('hidden');
+          requestAnimationFrame(function () {
+            el.classList.remove('translate-y-[200%]');
+            el.classList.add('translate-y-0');
+          });
+        }
+        if (mobileBtn) {
+          mobileBtn.removeAttribute('inert');
+          mobileBtn.classList.remove('translate-y-[calc(100%+86px)]');
+          mobileBtn.classList.add('translate-y-0');
+        }
+      }
+
+      function hideScrollSearch() {
+        if (desktopWrapper) {
+          const el = desktopWrapper;
+          el.classList.remove('translate-y-0');
+          el.classList.add('translate-y-[200%]');
+          const onEnd = () => {
+            el.classList.add('hidden');
+            el.setAttribute('inert', '');
+            el.removeEventListener('transitionend', onEnd);
+          };
+          el.addEventListener('transitionend', onEnd);
+        }
+        if (mobileBtn) {
+          mobileBtn.classList.remove('translate-y-0');
+          mobileBtn.classList.add('translate-y-[calc(100%+86px)]');
+          mobileBtn.setAttribute('inert', '');
+        }
+      }
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) {
+            showScrollSearch();
+          } else {
+            hideScrollSearch();
+          }
+        });
+      }, { threshold: 0 });
+
+      observer.observe(heroSearchWrapper);
+      return () => observer.disconnect();
+    }
+
+    function initSearch() {
+      var input      = document.querySelector('[data-testid="search-input"]') as HTMLInputElement;
+      var omnibox    = document.querySelector('[data-testid="omnibox-container"]');
+      var scrollable = document.querySelector('[data-testid="typeahead-content-scrollable-container"]') as HTMLElement;
+
+      if (!input || !omnibox || !scrollable) return;
+
+      function getContentHeight() {
+        scrollable.style.height = 'auto';
+        var h = scrollable.scrollHeight;
+        scrollable.style.height = '0';
+        return h;
+      }
+
+      function openDropdown() {
+        var h = getContentHeight();
+        scrollable.style.transition = 'height 220ms cubic-bezier(0.4,0,0.2,1)';
+        scrollable.style.height = Math.min(h, window.innerHeight * 0.45) + 'px';
+        omnibox?.setAttribute('data-open', 'true');
+      }
+
+      function closeDropdown() {
+        scrollable.style.transition = 'height 180ms cubic-bezier(0.4,0,0.2,1)';
+        scrollable.style.height = '0';
+        omnibox?.removeAttribute('data-open');
+      }
+
+      input.addEventListener('focus', openDropdown);
+      input.addEventListener('click', openDropdown);
+
+      const items = document.querySelectorAll('[data-testid="typeahead-item"]');
+      items.forEach(function (item) {
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          var text = item.querySelector('p') ? item.querySelector('p')?.textContent?.trim() : '';
+          if (text) {
+            input.value = text;
+          }
+          closeDropdown();
+          input.blur();
+        });
+      });
+
+      const handleOutsideClick = (e: MouseEvent) => {
+        if (omnibox && !omnibox.contains(e.target as Node)) {
+          closeDropdown();
+        }
+      };
+      document.addEventListener('mousedown', handleOutsideClick);
+
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') { closeDropdown(); input.blur(); }
+      };
+      input.addEventListener('keydown', handleEsc);
+      
+      return () => {
+        document.removeEventListener('mousedown', handleOutsideClick);
+        input.removeEventListener('keydown', handleEsc);
+      };
+    }
+
+    function initScrollSearchDropdown() {
+      var input   = document.getElementById('scroll-search-input') as HTMLInputElement;
+      var panel   = document.getElementById('scroll-suggestions-panel') as HTMLElement;
+      var wrapper = document.querySelector('[data-testid="desktop-search-wrapper"]');
+
+      if (!input || !panel) return;
+
+      function openPanel() {
+        panel.style.pointerEvents = 'auto';
+        panel.style.maxHeight = panel.scrollHeight + 'px';
+        panel.style.opacity = '1';
+      }
+
+      function closePanel() {
+        panel.style.maxHeight = '0';
+        panel.style.opacity = '0';
+        panel.style.pointerEvents = 'none';
+      }
+
+      input.addEventListener('focus', openPanel);
+      input.addEventListener('click', openPanel);
+
+      panel.querySelectorAll('.scroll-suggestion-item').forEach(function (item) {
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          var p = item.querySelector('p');
+          if (p) input.value = p.textContent?.trim() || "";
+          closePanel();
+          input.blur();
+        });
+      });
+
+      const handleOutsideClick = (e: MouseEvent) => {
+        if (wrapper && !wrapper.contains(e.target as Node)) closePanel();
+      };
+      document.addEventListener('mousedown', handleOutsideClick);
+
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') { closePanel(); input.blur(); }
+      };
+      input.addEventListener('keydown', handleEsc);
+      
+      return () => {
+        document.removeEventListener('mousedown', handleOutsideClick);
+        input.removeEventListener('keydown', handleEsc);
+      };
+    }
+
+    let cleanup: (() => void)[] = [];
+
+    // Initialize after a small delay to ensure DOM and Swiper are ready
+    const timer = setTimeout(() => {
+      initSwipers();
+      const scrollSearchCleanup = initScrollSearch();
+      if (scrollSearchCleanup) cleanup.push(scrollSearchCleanup);
+      
+      const searchCleanup = initSearch();
+      if (searchCleanup) cleanup.push(searchCleanup);
+      
+      const dropdownCleanup = initScrollSearchDropdown();
+      if (dropdownCleanup) cleanup.push(dropdownCleanup);
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+      cleanup.forEach(fn => fn());
+    };
+  }, []);
+
+  return (
+    <>
+      <Script 
+        src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" 
+        strategy="afterInteractive"
+      />
+      <div 
+        suppressHydrationWarning={true}
+        dangerouslySetInnerHTML={{ __html: `
+    <div class="w-full lg:grid lg:grid-cols-[4.75rem_1fr] lg:bg-[#FCFCFC]">
+        <div data-testid="HeaderWrapper"
+            class="fixed bottom-0 z-40 w-full rounded-[28px_28px_0_0] max-lg:z-[60] max-lg:border-[0.5px] max-lg:border-border-image max-lg:bg-bg-fill max-lg:shadow-[0_2px_16px_0_rgba(0,0,0,0.08)] lg:sticky lg:top-0 lg:h-screen lg:hover:z-[60]"
+            style="view-transition-name:header-wrapper">
+            <div class="relative h-full">
+                <header data-testid="header"
+                    class="relative mx-auto my-space-0 h-full max-w-largePageWidth py-space-12 transition-all max-lg:px-space-16 lg:py-space-20">
+                    <div
+                        class="flex h-full items-center justify-center max-lg:gap-space-20 lg:flex-col lg:justify-between">
+                        <div
+                            class="flex h-space-32 w-space-32 items-center justify-center gap-space-40 max-lg:hidden lg:flex-col transition-scale duration-300 ease-in-out hover:scale-105 relative p-space-8">
+                            <a data-testid="ShopLogoLink" href="/" data-discover="true">
+                                <svg width="24" height="27" viewBox="0 0 24 27" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-space-24 w-space-24 transform-gpu text-text-brand">
+                                    <path
+                                        d="M9.04738 0C5.92722 0 3.00481 0.971665 0.906387 2.37332C0.763562 2.46825 0.714122 2.6637 0.802014 2.81448L3.3344 7.20931C3.42779 7.36567 3.62554 7.42151 3.77935 7.32658C5.3724 6.34933 7.19615 5.84116 9.05837 5.85233C14.0737 5.85233 17.7597 9.4486 17.7597 14.2008C17.7597 18.2494 14.8098 21.2482 11.0689 21.2482C8.02014 21.2482 5.90524 19.4445 5.90524 16.898C5.90524 15.4405 6.51499 14.2455 8.10254 13.4023C8.26734 13.3129 8.32776 13.1063 8.22888 12.9444L5.83932 8.83433C5.76242 8.70031 5.59762 8.63888 5.4493 8.69473C2.24674 9.90093 0 12.8048 0 16.7026C0 22.5996 4.61982 27 11.0634 27C18.5892 27 24 21.7005 24 14.1003C24 5.95284 17.7047 0 9.04738 0Z"
+                                        fill="#5433EB"></path>
+                                </svg>
+                            </a>
+                        </div>
+                        <div
+                            class="pointer-events-none flex items-center gap-space-20 lg:flex-col lg:[&amp;:hover_[data-tooltip]]:visible lg:[&amp;:hover_[data-tooltip]]:[transition:opacity_150ms_0ms,visibility_150ms_800ms]">
+                            <div
+                                class="pointer-events-auto relative flex items-center lg:[&amp;:hover&gt;[data-tooltip]]:opacity-100 lg:[&amp;:hover&gt;[data-tooltip]]:[transition:opacity_150ms_0ms,visibility_150ms_0ms]">
+                                <a data-testid="HeaderLink-Home"
+                                    class="transition relative flex items-center justify-center active:scale-[0.96] p-space-12 hover:opacity-100 hover:scale-105"
+                                    aria-label="Home" href="/" data-discover="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg" class="text-text-fixed-dark"
+                                        data-testid="icon-home-filled" style="width:24px;height:24px" stroke="none">
+                                        <path
+                                            d="M12.4919 1.79131C12.1691 1.70937 11.8309 1.70937 11.508 1.79131C11.1337 1.88631 10.813 2.11797 10.5574 2.30261L10.4865 2.35369L1.91784 8.48811C1.46877 8.8096 1.36536 9.43427 1.68685 9.88333C2.00834 10.3324 2.633 10.4358 3.08207 10.1143L3.99997 9.45718L3.99997 15.2413C3.99995 16.0463 3.99994 16.7106 4.04416 17.2518C4.09009 17.8139 4.18865 18.3306 4.43594 18.816C4.81944 19.5686 5.43136 20.1805 6.18401 20.564C6.66934 20.8113 7.18604 20.9099 7.74814 20.9558C8.28933 21 8.95368 21 9.75864 21H14.2413C15.0463 21 15.7106 21 16.2518 20.9558C16.8139 20.9099 17.3306 20.8113 17.8159 20.564C18.5686 20.1805 19.1805 19.5686 19.564 18.816C19.8113 18.3306 19.9098 17.8139 19.9558 17.2518C20 16.7106 20 16.0463 20 15.2413V9.45718L20.9179 10.1143C21.3669 10.4358 21.9916 10.3324 22.3131 9.88333C22.6346 9.43427 22.5312 8.8096 22.0821 8.48811L13.5135 2.35369L13.4425 2.30261C13.187 2.11797 12.8663 1.88631 12.4919 1.79131Z"
+                                            fill="currentColor"></path>
+                                    </svg>
+                                </a>
+                                <div class="pointer-events-none invisible absolute left-[calc(100%+6px)] flex flex-col items-center justify-center whitespace-nowrap rounded-full border-[0.5px] border-border-image bg-bg-fill p-space-4 px-space-10 opacity-0 shadow-s max-lg:hidden lg:[transition:opacity_150ms_0ms,visibility_150ms_0ms]"
+                                    data-tooltip="true" aria-hidden="true">
+                                    <p class="font-caption text-caption">Home</p>
+                                </div>
+                            </div>
+                            <div
+                                class="pointer-events-auto relative flex items-center lg:[&amp;:hover&gt;[data-tooltip]]:opacity-100 lg:[&amp;:hover&gt;[data-tooltip]]:[transition:opacity_150ms_0ms,visibility_150ms_0ms]">
+                                <a data-testid="HeaderLink-Explore"
+                                    class="transition relative flex items-center justify-center active:scale-[0.96] p-space-12 opacity-35 hover:opacity-100 hover:scale-105"
+                                    aria-label="Explore" href="/categories" data-discover="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg" class="text-text-fixed-dark"
+                                        data-testid="icon-grid-filled" style="width:24px;height:24px" stroke="none">
+                                        <path
+                                            d="M4.28174 11.1675C3.5083 11.1675 2.92822 10.9777 2.5415 10.5981C2.16195 10.2114 1.97217 9.61702 1.97217 8.81494V4.32471C1.97217 3.52979 2.16195 2.93896 2.5415 2.55225C2.92822 2.16553 3.5083 1.97217 4.28174 1.97217H8.84717C9.62061 1.97217 10.2007 2.16553 10.5874 2.55225C10.9741 2.93896 11.1675 3.52979 11.1675 4.32471V8.81494C11.1675 9.61702 10.9741 10.2114 10.5874 10.5981C10.2007 10.9777 9.62061 11.1675 8.84717 11.1675H4.28174ZM15.1528 11.1675C14.3794 11.1675 13.7993 10.9777 13.4126 10.5981C13.0259 10.2114 12.8325 9.61702 12.8325 8.81494V4.32471C12.8325 3.52979 13.0259 2.93896 13.4126 2.55225C13.7993 2.16553 14.3794 1.97217 15.1528 1.97217H19.7183C20.4917 1.97217 21.0682 2.16553 21.4478 2.55225C21.8345 2.93896 22.0278 3.52979 22.0278 4.32471V8.81494C22.0278 9.61702 21.8345 10.2114 21.4478 10.5981C21.0682 10.9777 20.4917 11.1675 19.7183 11.1675H15.1528ZM4.28174 22.0278C3.5083 22.0278 2.92822 21.8345 2.5415 21.4478C2.16195 21.0682 1.97217 20.4774 1.97217 19.6753V15.1958C1.97217 14.4009 2.16195 13.8101 2.5415 13.4233C2.92822 13.0366 3.5083 12.8433 4.28174 12.8433H8.84717C9.62061 12.8433 10.2007 13.0366 10.5874 13.4233C10.9741 13.8101 11.1675 14.4009 11.1675 15.1958V19.6753C11.1675 20.4774 10.9741 21.0682 10.5874 21.4478C10.2007 21.8345 9.62061 22.0278 8.84717 22.0278H4.28174ZM15.1528 22.0278C14.3794 22.0278 13.7993 21.8345 13.4126 21.4478C13.0259 21.0682 12.8325 20.4774 12.8325 19.6753V15.1958C12.8325 14.4009 13.0259 13.8101 13.4126 13.4233C13.7993 13.0366 14.3794 12.8433 15.1528 12.8433H19.7183C20.4917 12.8433 21.0682 13.0366 21.4478 13.4233C21.8345 13.8101 22.0278 14.4009 22.0278 15.1958V19.6753C22.0278 20.4774 21.8345 21.0682 21.4478 21.4478C21.0682 21.8345 20.4917 22.0278 19.7183 22.0278H15.1528Z"
+                                            fill="black"></path>
+                                    </svg>
+                                </a>
+                                <div class="pointer-events-none invisible absolute left-[calc(100%+6px)] flex flex-col items-center justify-center whitespace-nowrap rounded-full border-[0.5px] border-border-image bg-bg-fill p-space-4 px-space-10 opacity-0 shadow-s max-lg:hidden lg:[transition:opacity_150ms_0ms,visibility_150ms_0ms]"
+                                    data-tooltip="true" aria-hidden="true">
+                                    <p class="font-caption text-caption">Explore</p>
+                                </div>
+                            </div>
+                            <div
+                                class="pointer-events-auto relative flex items-center lg:[&amp;:hover&gt;[data-tooltip]]:opacity-100 lg:[&amp;:hover&gt;[data-tooltip]]:[transition:opacity_150ms_0ms,visibility_150ms_0ms]">
+                                <a data-testid="cart-indicator"
+                                    class="transition relative grid place-items-center justify-center active:scale-[0.96] p-space-12 rounded-full before:absolute before:inset-0 before:scale-50 before:rounded-full before:bg-bg-fill-brand before:opacity-0 before:shadow-l before:transition-all before:duration-100 before:ease-in-out before:content-[&quot;&quot;] opacity-35 hover:scale-105 hover:opacity-100"
+                                    aria-label="View Cart" href="/cart" data-discover="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="relative col-start-1 row-start-1 text-text-fixed-dark"
+                                        data-testid="icon-cart-filled" style="width:24px;height:24px" stroke="none">
+                                        <path
+                                            d="M7.2207 20.0986C8.244 20.0988 9.07399 20.9289 9.07422 21.9521C9.0741 22.9755 8.24407 23.8055 7.2207 23.8057C6.1974 23.8055 5.36731 22.9755 5.36719 21.9521C5.36742 20.9289 6.19747 20.0988 7.2207 20.0986ZM17.7764 20.0986C18.7997 20.0988 19.6297 20.9289 19.6299 21.9521C19.6298 22.9755 18.7997 23.8055 17.7764 23.8057C16.7531 23.8055 15.923 22.9755 15.9229 21.9521C15.9231 20.9289 16.7531 20.0988 17.7764 20.0986ZM4.34082 1.19824C4.78369 1.23766 5.15287 1.56749 5.23535 2.01172L5.88672 5.52441H19.5928C20.8152 5.52463 21.7515 6.61231 21.5703 7.82129L20.502 14.9443C20.2083 16.9022 18.5265 18.3512 16.5469 18.3516H9.5918C7.66976 18.3516 6.01889 16.9841 5.66113 15.0957L4.07324 6.71094L4.07227 6.70703L3.41992 3.19434H1.00391C0.451621 3.19434 0.00390625 2.74662 0.00390625 2.19434C0.00390625 1.64205 0.451621 1.19434 1.00391 1.19434H4.25195L4.34082 1.19824Z"
+                                            fill="currentColor"></path>
+                                    </svg>
+                                </a>
+                                <div class="pointer-events-none invisible absolute left-[calc(100%+6px)] flex flex-col items-center justify-center whitespace-nowrap rounded-full border-[0.5px] border-border-image bg-bg-fill p-space-4 px-space-10 opacity-0 shadow-s max-lg:hidden lg:[transition:opacity_150ms_0ms,visibility_150ms_0ms]"
+                                    data-tooltip="true" aria-hidden="true">
+                                    <p class="font-caption text-caption">View Cart</p>
+                                </div>
+                            </div>
+                            <div
+                                class="pointer-events-auto relative flex items-center lg:[&amp;:hover&gt;[data-tooltip]]:opacity-100 lg:[&amp;:hover&gt;[data-tooltip]]:[transition:opacity_150ms_0ms,visibility_150ms_0ms]">
+                                <a data-testid="HeaderLink-Deals"
+                                    class="transition relative flex items-center justify-center active:scale-[0.96] p-space-12 opacity-35 hover:opacity-100 hover:scale-105"
+                                    aria-label="Deals" href="/offers" data-discover="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg" class="text-text-fixed-dark"
+                                        data-testid="icon-tag-filled" style="width:24px;height:24px" stroke="none">
+                                        <path
+                                            d="M10.6719 2C11.4674 2.00008 12.2304 2.31637 12.793 2.87891L20.793 10.8789C21.9643 12.0504 21.9643 13.9496 20.793 15.1211L15.1211 20.793C13.9496 21.9643 12.0504 21.9643 10.8789 20.793L2.87891 12.793C2.31637 12.2304 2.00008 11.4674 2 10.6719V6.32812C2.00008 5.53258 2.31637 4.76957 2.87891 4.20703L4.20703 2.87891C4.76957 2.31637 5.53258 2.00008 6.32812 2H10.6719ZM8 6C6.89543 6 6 6.89543 6 8C6 9.10457 6.89543 10 8 10C9.10457 10 10 9.10457 10 8C10 6.89543 9.10457 6 8 6Z"
+                                            fill="currentColor"></path>
+                                    </svg>
+                                </a>
+                                <div class="pointer-events-none invisible absolute left-[calc(100%+6px)] flex flex-col items-center justify-center whitespace-nowrap rounded-full border-[0.5px] border-border-image bg-bg-fill p-space-4 px-space-10 opacity-0 shadow-s max-lg:hidden lg:[transition:opacity_150ms_0ms,visibility_150ms_0ms]"
+                                    data-tooltip="true" aria-hidden="true">
+                                    <p class="font-caption text-caption">Deals</p>
+                                </div>
+                            </div>
+                            <div
+                                class="max-lg:hidden pointer-events-auto relative flex items-center lg:[&amp;:hover&gt;[data-tooltip]]:opacity-100 lg:[&amp;:hover&gt;[data-tooltip]]:[transition:opacity_150ms_0ms,visibility_150ms_0ms]">
+                                <button type="button"
+                                    class="transition relative flex items-center justify-center active:scale-[0.96] p-space-12 hover:scale-105 hover:opacity-100 opacity-35 text-text focus-visible:outline-none focus-visible:ring focus-visible:ring-border-input-active focus-visible:ring-offset-2 false"
+                                    aria-label="Sign in to view saved items" data-testid="favorites-icon-link">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" class="text-text" data-testid="icon-favorites-filled"
+                                        style="width:24px;height:24px" stroke="none">
+                                        <path fill="currentColor"
+                                            d="M12.315 5.204a5.584 5.584 0 0 1 7.729-.291l.212.198.009.008.076.077.008.008c2.17 2.227 2.2 5.807.09 8.071l-.007.008-.076.08-.007.007-7.633 7.828a1 1 0 0 1-1.432 0L3.651 13.37c-2.201-2.258-2.201-5.908 0-8.166a5.586 5.586 0 0 1 8.034 0l.315.323z">
+                                        </path>
+                                    </svg>
+                                </button>
+                                <div class="pointer-events-none invisible absolute left-[calc(100%+6px)] flex flex-col items-center justify-center whitespace-nowrap rounded-full border-[0.5px] border-border-image bg-bg-fill p-space-4 px-space-10 opacity-0 shadow-s max-lg:hidden lg:[transition:opacity_150ms_0ms,visibility_150ms_0ms]"
+                                    data-tooltip="true" aria-hidden="true">
+                                    <p class="font-caption text-caption">Saved</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-space-8 lg:flex-col">
+                            <div data-testid="sign-in-button">
+                                <button aria-label="Sign in"
+                                    class="relative flex h-space-48 flex-col items-center justify-center px-space-12 opacity-35 transition hover:opacity-100 active:scale-[0.96] lg:h-[54px]">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg" class="text-text"
+                                        data-testid="icon-navigation-profile-filled" style="width:24px;height:24px"
+                                        stroke="none">
+                                        <path fill-rule="evenodd" clip-rule="evenodd"
+                                            d="M7.5 6.5C7.5 4.01472 9.51472 2 12 2C14.4853 2 16.5 4.01472 16.5 6.5C16.5 8.98528 14.4853 11 12 11C9.51472 11 7.5 8.98528 7.5 6.5Z"
+                                            fill="black"></path>
+                                        <path fill-rule="evenodd" clip-rule="evenodd"
+                                            d="M3.50439 19.9064C3.91665 15.5211 7.24222 12 12 12C16.7578 12 20.0834 15.5211 20.4956 19.9064C20.522 20.1867 20.429 20.465 20.2395 20.6732C20.05 20.8814 19.7815 21 19.5 21H4.5C4.21851 21 3.95005 20.8814 3.76055 20.6732C3.57104 20.465 3.47805 20.1867 3.50439 19.9064Z"
+                                            fill="black"></path>
+                                    </svg>
+                                    <span class="font-captionMedium text-captionMedium max-lg:hidden">Sign in</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+            </div>
+        </div>
+        <div data-id="content-wrapper-root"
+            class="relative col-start-2 row-start-1 w-full lg:max-w-[calc(100vw-4.75rem)] lg:p-space-8 lg:pl-0">
+            <div class="pointer-events-none sticky left-0 top-space-8 z-30 mb-[calc(-100dvh+16px)] grid h-[calc(100dvh-16px)] w-full rounded-radius-28 border border-[#EBEBEB] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06),0px_-1px_30px_0px_#F2F4F5,0_0_0_40px_#FCFCFC] max-lg:hidden"
+                style="clip-path:inset(-12px)"></div>
+            <div class="relative min-h-full w-full lg:bg-bg-fill overflow-x-clip">
+                <div class="z-10 h-fit overflow-hidden">
+                    <div data-testid="DownloadShopAppBanner"
+                        class="z-10 flex h-space-40 w-full justify-center overflow-hidden bg-bg-fill-inverse text-text-tertiary duration-300 absolute left-0 top-0">
+                        <a data-testid="download-shop-app-banner-link" class="flex items-center"
+                            href="https://shop.app/download" target="_blank">
+                            <div class="mr-space-8">
+                                <svg width="25" height="24" viewBox="0 0 25 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <g clip-path="url(#a)">
+                                        <path
+                                            d="M0.5 6C0.5 2.68629 3.18629 0 6.5 0H18.5C21.8137 0 24.5 2.68629 24.5 6V18C24.5 21.3137 21.8137 24 18.5 24H6.5C3.18629 24 0.5 21.3137 0.5 18V6Z"
+                                            fill="#5433EB" style="fill:color(display-p3 .3294 .2 .9216);fill-opacity:1">
+                                        </path>
+                                        <path
+                                            d="M4.88209 11.6146C4.07832 11.4403 3.72025 11.3721 3.72025 11.0624C3.72025 10.7712 3.96257 10.6261 4.44721 10.6261C4.87343 10.6261 5.18498 10.8123 5.41432 11.1772C5.43163 11.2053 5.46733 11.2151 5.49654 11.1999L6.40091 10.7431C6.43336 10.7268 6.44526 10.6857 6.42687 10.6543C6.05149 10.0036 5.35807 9.64746 4.44505 9.64746C3.24535 9.64746 2.5 10.2386 2.5 11.1783C2.5 12.1764 3.40762 12.4287 4.21246 12.603C5.01731 12.7773 5.37646 12.8455 5.37646 13.1551C5.37646 13.4647 5.11467 13.6109 4.59217 13.6109C4.10969 13.6109 3.75162 13.39 3.53527 12.9613C3.51904 12.9299 3.48118 12.9169 3.44981 12.9332L2.5476 13.3803C2.51623 13.3965 2.50325 13.4344 2.51947 13.4669C2.87754 14.1868 3.61207 14.5917 4.59325 14.5917C5.84271 14.5917 6.59779 14.0104 6.59779 13.0414C6.59779 12.0725 5.68585 11.791 4.88209 11.6167V11.6146Z"
+                                            fill="white" style="fill:#fff;fill-opacity:1"></path>
+                                        <path
+                                            d="M9.72847 9.64773C9.2157 9.64773 8.76244 9.82961 8.43682 10.1533C8.41627 10.1728 8.38273 10.1587 8.38273 10.1306V8.06387C8.38273 8.02815 8.3546 8 8.31891 8H7.18736C7.15166 8 7.12354 8.02815 7.12354 8.06387V14.4783C7.12354 14.5141 7.15166 14.5422 7.18736 14.5422H8.31891C8.3546 14.5422 8.38273 14.5141 8.38273 14.4783V11.6646C8.38273 11.1212 8.79922 10.7044 9.36066 10.7044C9.92211 10.7044 10.3289 11.1125 10.3289 11.6646V14.4783C10.3289 14.5141 10.357 14.5422 10.3927 14.5422H11.5242C11.5599 14.5422 11.5881 14.5141 11.5881 14.4783V11.6646C11.5881 10.4824 10.8135 9.64773 9.72847 9.64773Z"
+                                            fill="white" style="fill:#fff;fill-opacity:1"></path>
+                                        <path
+                                            d="M13.8837 9.46387C13.2693 9.46387 12.6938 9.65224 12.2805 9.92398C12.2524 9.94238 12.2427 9.98027 12.26 10.0095L12.7587 10.8615C12.7771 10.8918 12.816 10.9027 12.8463 10.8843C13.16 10.6948 13.5192 10.5963 13.8859 10.5984C14.8736 10.5984 15.5995 11.2956 15.5995 12.2169C15.5995 13.0018 15.0185 13.5832 14.2818 13.5832C13.6815 13.5832 13.265 13.2335 13.265 12.7398C13.265 12.4573 13.385 12.2256 13.6977 12.0621C13.7301 12.0448 13.742 12.0048 13.7226 11.9734L13.252 11.1766C13.2368 11.1506 13.2044 11.1387 13.1752 11.1495C12.5445 11.3833 12.1021 11.9463 12.1021 12.702C12.1021 13.8452 13.0118 14.6983 14.2808 14.6983C15.7628 14.6983 16.8284 13.6709 16.8284 12.1975C16.8284 10.6179 15.5886 9.46387 13.8837 9.46387Z"
+                                            fill="white" style="fill:#fff;fill-opacity:1"></path>
+                                        <path
+                                            d="M20.1387 9.6377C19.5664 9.6377 19.0548 9.84989 18.6815 10.2223C18.661 10.2429 18.6274 10.2277 18.6274 10.1996V9.75137C18.6274 9.71564 18.5993 9.6875 18.5636 9.6875H17.4613C17.4256 9.6875 17.3975 9.71564 17.3975 9.75137V16.1561C17.3975 16.1918 17.4256 16.22 17.4613 16.22H18.5928C18.6285 16.22 18.6567 16.1918 18.6567 16.1561V14.0558C18.6567 14.0277 18.6902 14.0136 18.7107 14.032C19.0829 14.3784 19.5751 14.5809 20.1387 14.5809C21.466 14.5809 22.5013 13.5059 22.5013 12.1093C22.5013 10.7127 21.465 9.6377 20.1387 9.6377ZM19.9245 13.4961C19.1694 13.4961 18.5972 12.8953 18.5972 12.1006C18.5972 11.306 19.1683 10.7051 19.9245 10.7051C20.6807 10.7051 21.2508 11.2963 21.2508 12.1006C21.2508 12.905 20.6882 13.4961 19.9234 13.4961H19.9245Z"
+                                            fill="white" style="fill:#fff;fill-opacity:1"></path>
+                                    </g>
+                                    <defs>
+                                        <clipPath id="a">
+                                            <path
+                                                d="M0.5 6C0.5 2.68629 3.18629 0 6.5 0H18.5C21.8137 0 24.5 2.68629 24.5 6V18C24.5 21.3137 21.8137 24 18.5 24H6.5C3.18629 24 0.5 21.3137 0.5 18V6Z"
+                                                fill="white" style="fill:#fff;fill-opacity:1"></path>
+                                        </clipPath>
+                                    </defs>
+                                </svg>
+                            </div>
+                            <p class="font-captionBold text-captionBold text-text-fixed-light">Download Shop app.</p>
+                            <p class="font-caption text-caption text-text-fixed-light-secondary">Available on iOS
+                                &amp;Android</p>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" class="ml-space-8 text-text-fixed-light-secondary"
+                                data-testid="icon-arrow-right" style="width:20px;height:20px" stroke="none">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                    stroke-width="2.67" d="m14 6 6 6m0 0-6 6m6-6H4"></path>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                <div class="relative flex flex-col bg-[#FBFBFB] gap-0">
+                    <div class="">
+                        <div class="size-full overflow-visible lg:mx-auto lg:max-w-pageWidth">
+                            <div data-testid="hero-collage"
+                                class="hero relative w-full grid grid-rows-[1fr] bg-[#FBFBFB] pt-space-0 transition-opacity duration-300 lg:-mb-space-64 lg:pt-space-64 h-[21vh] max-h-[400px] lg:h-[40vh] opacity-100">
+                                <div data-testid="hero-category"
+                                    class="hero-category pointer-events-none relative col-start-1 row-start-1">
+                                    <div class="absolute inset-0 overflow-hidden">
+                                        <video data-testid="hero-video"
+                                            autoplay muted playsinline loop preload="metadata"
+                                            class="video absolute left-1/2 top-[10%] max-h-[100%] w-auto sm:max-w-[90%] lg:top-[-8%] lg:max-w-[40%]"
+                                            style="--delay:0">
+                                            <source
+                                                src="/shopifycloud/shop-client/production/assets/everythingTop_av1-k836x3lc.mp4"
+                                                type="video/mp4; codecs=&quot;av01.0.05M.08&quot;" />
+                                            <source
+                                                src="/shopifycloud/shop-client/production/assets/everythingTop_h264-DE47rARu.mp4"
+                                                type="video/mp4; codecs=&quot;avc1.42E01E&quot;" />
+                                        </video>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div data-testid="heroContainer"
+                            class="z-10 flex w-full flex-col items-center px-space-16 relative pb-space-8 pt-space-20 lg:py-space-0">
+                            <div class="h-space-40 lg:hidden" aria-hidden="true"></div>
+                            <svg width="101" height="42" viewBox="0 0 101 42" fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-space-32 w-auto shrink-0 text-text-brand md:h-[72px]">
+                                <title>Shop</title>
+                                <path
+                                    d="M12.0288 18.2598C7.97006 17.3793 6.16191 17.0348 6.16191 15.4708C6.16191 13.9997 7.38555 13.2669 9.83283 13.2669C11.9851 13.2669 13.5584 14.2075 14.7165 16.0504C14.8039 16.1926 14.9841 16.2418 15.1316 16.1653L19.6984 13.8575C19.8623 13.7755 19.9224 13.5677 19.8295 13.4091C17.934 10.1224 14.4324 8.32324 9.82191 8.32324C3.76379 8.32324 0 11.3091 0 16.0559C0 21.098 4.58319 22.3722 8.64743 23.2527C12.7117 24.1331 14.5253 24.4776 14.5253 26.0417C14.5253 27.6057 13.2033 28.344 10.5648 28.344C8.12848 28.344 6.32033 27.2284 5.22779 25.0628C5.14585 24.9042 4.95466 24.8386 4.79624 24.9206L0.240358 27.1791C0.0819403 27.2612 0.0163881 27.4526 0.0983284 27.6166C1.90648 31.2533 5.61564 33.2986 10.5703 33.2986C16.8797 33.2986 20.6927 30.3619 20.6927 25.4675C20.6927 20.573 16.0876 19.1512 12.0288 18.2707V18.2598Z"
+                                    fill="currentColor"></path>
+                                <path
+                                    d="M36.5018 8.32341C33.9125 8.32341 31.6236 9.24214 29.9794 10.8773C29.8756 10.9757 29.7062 10.9046 29.7062 10.7624V0.322772C29.7062 0.142307 29.5642 0.00012207 29.3839 0.00012207H23.67C23.4897 0.00012207 23.3477 0.142307 23.3477 0.322772V32.7245C23.3477 32.905 23.4897 33.0472 23.67 33.0472H29.3839C29.5642 33.0472 29.7062 32.905 29.7062 32.7245V18.5115C29.7062 15.7662 31.8094 13.6608 34.6445 13.6608C37.4796 13.6608 39.5336 15.7225 39.5336 18.5115V32.7245C39.5336 32.905 39.6756 33.0472 39.8559 33.0472H45.5699C45.7501 33.0472 45.8922 32.905 45.8922 32.7245V18.5115C45.8922 12.5397 41.9809 8.32887 36.5018 8.32887V8.32341Z"
+                                    fill="currentColor"></path>
+                                <path
+                                    d="M57.4962 7.39915C54.3934 7.39915 51.4764 8.34522 49.3896 9.71785C49.2476 9.81082 49.1984 10.0022 49.2858 10.1499L51.8041 14.4537C51.897 14.6068 52.0937 14.6615 52.2466 14.5685C53.8308 13.6115 55.6444 13.1139 57.4962 13.1248C62.4837 13.1248 66.1491 16.6466 66.1491 21.3005C66.1491 25.2652 63.2157 28.2019 59.4956 28.2019C56.4638 28.2019 54.3607 26.4355 54.3607 23.9418C54.3607 22.5145 54.967 21.3442 56.5457 20.5184C56.7096 20.4309 56.7697 20.2286 56.6714 20.07L54.2951 16.0451C54.2186 15.9138 54.0548 15.8537 53.9073 15.9084C50.7225 17.0896 48.4883 19.9333 48.4883 23.7504C48.4883 29.5253 53.0824 33.8346 59.4901 33.8346C66.974 33.8346 72.3548 28.6448 72.3548 21.202C72.3548 13.2233 66.0945 7.39368 57.4853 7.39368L57.4962 7.39915Z"
+                                    fill="currentColor"></path>
+                                <path
+                                    d="M89.0635 8.27964C86.1738 8.27964 83.5954 9.34603 81.7108 11.2272C81.607 11.3311 81.4376 11.2546 81.4376 11.1124V8.84838C81.4376 8.66791 81.2956 8.52573 81.1153 8.52573H75.5489C75.3686 8.52573 75.2266 8.66791 75.2266 8.84838V41.2009C75.2266 41.3814 75.3686 41.5236 75.5489 41.5236H81.2628C81.4431 41.5236 81.5851 41.3814 81.5851 41.2009V30.5917C81.5851 30.4495 81.7545 30.3784 81.8583 30.4714C83.7374 32.2214 86.2229 33.244 89.069 33.244C95.7717 33.244 101 27.8137 101 20.7591C101 13.7045 95.7663 8.27417 89.069 8.27417L89.0635 8.27964ZM87.9874 27.7644C84.1744 27.7644 81.2847 24.7293 81.2847 20.7153C81.2847 16.7014 84.169 13.6663 87.9874 13.6663C91.8058 13.6663 94.6846 16.6521 94.6846 20.7153C94.6846 24.7786 91.844 27.7644 87.9819 27.7644H87.9874Z"
+                                    fill="currentColor"></path>
+                            </svg>
+                            <div
+                                class="pointer-events-auto mx-auto mt-space-12 flex w-full flex-col md:mt-space-24 md:max-w-[600px]">
+                                <div class="relative">
+                                    <div class="relative lg:block lg:h-[66px] lg:w-full h-[66px]">
+                                        <div data-testid="omnibox-container"
+                                            class="rounded-[32px] p-space-0 lg:p-space-8 lg:w-full lg:overflow-hidden lg:bg-[rgba(255,255,255,0.9)] lg:[box-shadow:0px_4px_24px_0_rgba(0,0,0,0.12),0_0_0_4.5px_rgba(0,0,0,0.03)] lg:absolute lg:max-h-[45dvh] lg:backdrop-blur-lg [box-shadow:0px_4px_24px_0_rgba(0,0,0,0.12)] bg-transparent outline-none">
+                                            <div class="" data-search-mobile-state="closed">
+                                                <form>
+                                                    <div
+                                                        class="flex flex-row gap-space-16 bg-bg-fill lg:bottom-none lg:opacity-100 rounded-[32px] lg:!bg-transparent lg:inset-x-space-8 lg:block shadow-m shadow-none p-space-4 lg:p-space-0 lg:shadow-none">
+                                                        <div
+                                                            class="relative flex w-full flex-col items-center lg:h-space-48">
+                                                            <input type="search" role="searchbox" autoComplete="off"
+                                                                data-testid="search-input"
+                                                                aria-label="Search products and stores"
+                                                                placeholder="What are you shopping for today?"
+                                                                class="lg:bg-overlay-fixed-light-75 h-space-48 w-full bg-transparent px-space-16 py-space-4 text-text lg:rounded-radius-max placeholder:text-text placeholder:opacity-60 lg:pl-space-20 lg:pr-space-48 lg:placeholder:text-center lg:focus:border lg:focus:border-border-secondary lg:focus:bg-bg-overlay-fixed-light-75 lg:focus:shadow-s placeholder:text-left"
+                                                                name="search" value="" />
+                                                            <div
+                                                                class="z-10 flex h-space-48 justify-end p-space-4 absolute right-0 w-space-48">
+                                                                <button data-testid="search-submit-button"
+                                                                    class="group flex size-space-40 items-center justify-center rounded-radius-max bg-bg-brand shadow-[0_4px_24px_0_rgba(69,36,219,0.34)] active:scale-95 lg:absolute lg:right-space-4"
+                                                                    type="submit" aria-label="Clear search">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                        height="24" viewBox="0 0 24 24" fill="none"
+                                                                        class="text-text-inverse group-hover:scale-105 block"
+                                                                        data-testid="icon-arrow-right"
+                                                                        style="width:20px;height:20px" stroke="none">
+                                                                        <path stroke="currentColor"
+                                                                            stroke-linecap="round"
+                                                                            stroke-linejoin="round" stroke-width="2.67"
+                                                                            d="m14 6 6 6m0 0-6 6m6-6H4"></path>
+                                                                    </svg>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                        height="24" viewBox="0 0 24 24" fill="none"
+                                                                        class="text-text-inverse group-hover:scale-105 hidden"
+                                                                        data-testid="icon-arrow-up"
+                                                                        style="width:20px;height:20px" stroke="none">
+                                                                        <path stroke="currentColor"
+                                                                            stroke-linecap="round"
+                                                                            stroke-linejoin="round" stroke-width="2.67"
+                                                                            d="m6 10 6-6m0 0 6 6m-6-6v16"></path>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div data-testid="typeahead-content-container"
+                                                class="relative overflow-hidden bg-[rgba(255,255,255,0.9)] backdrop-blur-[10px] lg:bg-transparent lg:backdrop-blur-none">
+                                                <div data-testid="typeahead-content-scrollable-container"
+                                                    class="h-auto w-full lg:h-fit lg:max-h-[calc(45dvh-88px)] scrollbar-hide overflow-y-auto overscroll-contain"
+                                                    style="height:0;mask-image:linear-gradient(to bottom, black 0%, black 100%);-webkit-mask-image:linear-gradient(to bottom, black 0%, black 100%)">
+                                                    <div class="h-auto min-h-0 w-full lg:h-fit lg:overflow-hidden">
+                                                        <div data-testid="search-suggestions-content"
+                                                            class="lg:relative lg:h-full lg:pb-space-0">
+                                                            <p class="font-captionMedium text-captionMedium my-space-8 mb-space-4 text-text-tertiary px-space-16"
+                                                                id="search-suggestions">Suggested searches</p>
+                                                            <ul class="flex flex-col gap-space-4 px-space-8">
+                                                                <li role="button"
+                                                                    class="group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden"
+                                                                    data-testid="typeahead-item">
+                                                                    <div
+                                                                        class="flex w-full min-w-0 items-center gap-space-16">
+                                                                        <div
+                                                                            class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                                            <svg width="24" height="24"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                class="text-text opacity-60"
+                                                                                data-testid="icon-search"
+                                                                                style="width:20px;height:20px"
+                                                                                stroke="none">
+                                                                                <path
+                                                                                    d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"
+                                                                                    stroke="currentColor"
+                                                                                    stroke-width="2.67"
+                                                                                    stroke-linecap="round"></path>
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                                            <p class="font-bodySmall text-bodySmall">
+                                                                                Plant-based protein powders</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </li>
+                                                                <li role="button"
+                                                                    class="group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden"
+                                                                    data-testid="typeahead-item">
+                                                                    <div
+                                                                        class="flex w-full min-w-0 items-center gap-space-16">
+                                                                        <div
+                                                                            class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                                            <svg width="24" height="24"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                class="text-text opacity-60"
+                                                                                data-testid="icon-search"
+                                                                                style="width:20px;height:20px"
+                                                                                stroke="none">
+                                                                                <path
+                                                                                    d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"
+                                                                                    stroke="currentColor"
+                                                                                    stroke-width="2.67"
+                                                                                    stroke-linecap="round"></path>
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                                            <p class="font-bodySmall text-bodySmall">
+                                                                                Vegan leather handbags</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </li>
+                                                                <li role="button"
+                                                                    class="group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden"
+                                                                    data-testid="typeahead-item">
+                                                                    <div
+                                                                        class="flex w-full min-w-0 items-center gap-space-16">
+                                                                        <div
+                                                                            class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                                            <svg width="24" height="24"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                class="text-text opacity-60"
+                                                                                data-testid="icon-search"
+                                                                                style="width:20px;height:20px"
+                                                                                stroke="none">
+                                                                                <path
+                                                                                    d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"
+                                                                                    stroke="currentColor"
+                                                                                    stroke-width="2.67"
+                                                                                    stroke-linecap="round"></path>
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                                            <p class="font-bodySmall text-bodySmall">
+                                                                                Bedroom decor</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </li>
+                                                                <li role="button"
+                                                                    class="group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden"
+                                                                    data-testid="typeahead-item">
+                                                                    <div
+                                                                        class="flex w-full min-w-0 items-center gap-space-16">
+                                                                        <div
+                                                                            class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                                            <svg width="24" height="24"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                class="text-text opacity-60"
+                                                                                data-testid="icon-search"
+                                                                                style="width:20px;height:20px"
+                                                                                stroke="none">
+                                                                                <path
+                                                                                    d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"
+                                                                                    stroke="currentColor"
+                                                                                    stroke-width="2.67"
+                                                                                    stroke-linecap="round"></path>
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                                            <p class="font-bodySmall text-bodySmall">
+                                                                                Waterproof jackets</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </li>
+                                                                <li role="button"
+                                                                    class="group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden"
+                                                                    data-testid="typeahead-item">
+                                                                    <div
+                                                                        class="flex w-full min-w-0 items-center gap-space-16">
+                                                                        <div
+                                                                            class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                                            <svg width="24" height="24"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                class="text-text opacity-60"
+                                                                                data-testid="icon-search"
+                                                                                style="width:20px;height:20px"
+                                                                                stroke="none">
+                                                                                <path
+                                                                                    d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"
+                                                                                    stroke="currentColor"
+                                                                                    stroke-width="2.67"
+                                                                                    stroke-linecap="round"></path>
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                                            <p class="font-bodySmall text-bodySmall">
+                                                                                Hoodies</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </li>
+                                                            </ul>
+                                                            <div class="px-space-16">
+                                                                <a href="https://www.shopify.com/legal/privacy/consumers"
+                                                                    target="_blank">
+                                                                    <p
+                                                                        class="font-caption text-caption text-text-tertiary">
+                                                                        Learn more about how we use your data to
+                                                                        personalize your experience and ads.
+                                                                        Recommendations are for informational purposes
+                                                                        only.</p>
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pointer-events-auto mx-auto mt-space-4 flex w-full flex-col md:mt-space-24 px-space-16">
+                        <div data-testid="carousel-scroll-container"
+                            class="_carouselContainer_1tus8_7 scrollbar-hide flex items-stretch overflow-x-auto md:overflow-x-visible md:flex-wrap md:justify-center scroll-smooth transition-all duration-200 sm:snap-x sm:snap-mandatory edge-bleed [justify-content:safe_center]"
+                            style="--carousel-gap-default: 4px; --carousel-gap-sm: 8px;">
+                            <div data-carousel-index="0" class="_carouselItem_1tus8_72 flex shrink-0 flex-col sm:snap-start">
+                                <div><a class="relative flex h-space-44 flex-row items-center rounded-full border border-border-image bg-bg p-space-6 pr-space-16 shadow-s transition-all duration-200 ease-in-out hover:bg-bg-fill-secondary active:scale-[0.98]"
+                                        href="/categories/1/women" data-discover="true">
+                                        <div class="mr-space-8 size-space-32 overflow-hidden rounded-full border border-border-image"><img
+                                                data-testid="image" class="size-full object-cover object-right" alt="Women"
+                                                sizes="(max-width: 767px) 100vw"
+                                                srcset="/shop-assets/static_uploads/shop-categories/20260326_1_L1_womenswear_pill.png 640w"
+                                                src="/shop-assets/static_uploads/shop-categories/20260326_1_L1_womenswear_pill.png"
+                                                style="background-size: cover;"></div>
+                                        <p class="font-buttonMedium text-buttonMedium">Women</p>
+                                    </a></div>
+                            </div>
+                            <div data-carousel-index="1" class="_carouselItem_1tus8_72 flex shrink-0 flex-col sm:snap-start">
+                                <div><a class="relative flex h-space-44 flex-row items-center rounded-full border border-border-image bg-bg p-space-6 pr-space-16 shadow-s transition-all duration-200 ease-in-out hover:bg-bg-fill-secondary active:scale-[0.98]"
+                                        href="/categories/2/men" data-discover="true">
+                                        <div class="mr-space-8 size-space-32 overflow-hidden rounded-full border border-border-image"><img
+                                                data-testid="image" class="size-full object-cover object-right" alt="Men"
+                                                sizes="(max-width: 767px) 100vw"
+                                                srcset="/shop-assets/static_uploads/shop-categories/20260326_2_L1_menswear_pill.png 640w"
+                                                src="/shop-assets/static_uploads/shop-categories/20260326_2_L1_menswear_pill.png"
+                                                style="background-size: cover;"></div>
+                                        <p class="font-buttonMedium text-buttonMedium">Men</p>
+                                    </a></div>
+                            </div>
+                            <div data-carousel-index="2" class="_carouselItem_1tus8_72 flex shrink-0 flex-col sm:snap-start">
+                                <div><a class="relative flex h-space-44 flex-row items-center rounded-full border border-border-image bg-bg p-space-6 pr-space-16 shadow-s transition-all duration-200 ease-in-out hover:bg-bg-fill-secondary active:scale-[0.98]"
+                                        href="/categories/5/beauty" data-discover="true">
+                                        <div class="mr-space-8 size-space-32 overflow-hidden rounded-full border border-border-image"><img
+                                                data-testid="image" class="size-full object-cover object-right" alt="Beauty"
+                                                sizes="(max-width: 767px) 100vw"
+                                                srcset="/shop-assets/static_uploads/shop-categories/20260326_5_L1_beauty_pill.png 640w"
+                                                src="/shop-assets/static_uploads/shop-categories/20260326_5_L1_beauty_pill.png"
+                                                style="background-size: cover;"></div>
+                                        <p class="font-buttonMedium text-buttonMedium">Beauty</p>
+                                    </a></div>
+                            </div>
+                            <div data-carousel-index="3" class="_carouselItem_1tus8_72 flex shrink-0 flex-col sm:snap-start">
+                                <div><a class="relative flex h-space-44 flex-row items-center rounded-full border border-border-image bg-bg p-space-6 pr-space-16 shadow-s transition-all duration-200 ease-in-out hover:bg-bg-fill-secondary active:scale-[0.98]"
+                                        href="/categories/6/home" data-discover="true">
+                                        <div class="mr-space-8 size-space-32 overflow-hidden rounded-full border border-border-image"><img
+                                                data-testid="image" class="size-full object-cover object-right" alt="Home"
+                                                sizes="(max-width: 767px) 100vw"
+                                                srcset="/shop-assets/static_uploads/shop-categories/20260326_6_L1_home_pill.png 640w"
+                                                src="/shop-assets/static_uploads/shop-categories/20260326_6_L1_home_pill.png"
+                                                style="background-size: cover;"></div>
+                                        <p class="font-buttonMedium text-buttonMedium">Home</p>
+                                    </a></div>
+                            </div>
+                            <div data-carousel-index="4" class="_carouselItem_1tus8_72 flex shrink-0 flex-col sm:snap-start">
+                                <div><a class="relative flex h-space-44 flex-row items-center rounded-full border border-border-image bg-bg p-space-6 pr-space-16 shadow-s transition-all duration-200 ease-in-out hover:bg-bg-fill-secondary active:scale-[0.98]"
+                                        href="/categories/69/fitness-nutrition" data-discover="true">
+                                        <div class="mr-space-8 size-space-32 overflow-hidden rounded-full border border-border-image"><img
+                                                data-testid="image" class="size-full object-cover object-right"
+                                                alt="Fitness &amp; nutrition" sizes="(max-width: 767px) 100vw"
+                                                srcset="/shop-assets/static_uploads/shop-categories/20260326_69_L1_fitness_nutrition_pill.png 640w"
+                                                src="/shop-assets/static_uploads/shop-categories/20260326_69_L1_fitness_nutrition_pill.png"
+                                                style="background-size: cover;"></div>
+                                        <p class="font-buttonMedium text-buttonMedium">Fitness &amp; nutrition</p>
+                                    </a></div>
+                            </div>
+                            <div data-carousel-index="5" class="_carouselItem_1tus8_72 flex shrink-0 flex-col sm:snap-start">
+                                <div><a class="relative flex h-space-44 flex-row items-center rounded-full border border-border-image bg-bg p-space-6 pr-space-16 shadow-s transition-all duration-200 ease-in-out hover:bg-bg-fill-secondary active:scale-[0.98]"
+                                        href="/categories/209/baby-toddler" data-discover="true">
+                                        <div class="mr-space-8 size-space-32 overflow-hidden rounded-full border border-border-image"><img
+                                                data-testid="image" class="size-full object-cover object-right"
+                                                alt="Baby &amp; toddler" sizes="(max-width: 767px) 100vw"
+                                                srcset="/shop-assets/static_uploads/shop-categories/20260326_209_L1_baby_toddler_pill.png 640w"
+                                                src="/shop-assets/static_uploads/shop-categories/20260326_209_L1_baby_toddler_pill.png"
+                                                style="background-size: cover;"></div>
+                                        <p class="font-buttonMedium text-buttonMedium">Baby &amp; toddler</p>
+                                    </a></div>
+                            </div>
+                            <div data-carousel-index="6" class="_carouselItem_1tus8_72 flex shrink-0 flex-col sm:snap-start">
+                                <div><a class="relative flex h-space-44 flex-row items-center rounded-full border border-border-image bg-bg p-space-6 pr-space-16 shadow-s transition-all duration-200 ease-in-out hover:bg-bg-fill-secondary active:scale-[0.98]"
+                                        href="/categories/251/food-drinks" data-discover="true">
+                                        <div class="mr-space-8 size-space-32 overflow-hidden rounded-full border border-border-image"><img
+                                                data-testid="image" class="size-full object-cover object-right"
+                                                alt="Food &amp; drinks" sizes="(max-width: 767px) 100vw"
+                                                srcset="/shop-assets/static_uploads/shop-categories/20260326_251_L1_food_drinks_pill.png 640w"
+                                                src="/shop-assets/static_uploads/shop-categories/20260326_251_L1_food_drinks_pill.png"
+                                                style="background-size: cover;"></div>
+                                        <p class="font-buttonMedium text-buttonMedium">Food &amp; drinks</p>
+                                    </a></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="_pageLayout_12g22_12 page-layout-root bg-[#FBFBFB] md:pt-space-16"
+                        style="--page-content-max:2000px" data-layout="feed">
+                        <div>
+                            <div class="w-full [overflow-anchor:none]">
+                                <div data-testid="rail-earbuds">
+                                    <div style="--exact-items-in-view:1" data-testid="rail-with-breakpoints">
+                                        <div class="mb-space-32 md:mb-space-48">
+                                            <div class="mb-space-16 flex items-center gap-space-16">
+                                                <h2 class="font-headingSmall text-headingSmall text-text">New Earbuds</h2>
+                                                <div class="ml-auto hidden h-space-32 gap-space-4 md:flex"></div>
+                                            </div>
+                                            <div class="swiper edge-bleed-mobile">
+                                                <div class="swiper-wrapper visible">
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/bass-01-228x228.webp" alt="Bass 01 Earbuds" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Bass 01 Earbuds</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Audio Hub</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$49.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/bh-t24-0001-228x228.webp" alt="BH-T24 Wireless" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">BH-T24 Wireless</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Sound Pro</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$59.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/bl135-01-228x228.webp" alt="BL135 Pro" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">BL135 Pro</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Elite Audio</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$69.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/bl138-black-01-228x228.webp" alt="BL138 Black" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">BL138 Black</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Dark Sound</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$79.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/bl151-01-228x228.webp" alt="BL151 Sport" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">BL151 Sport</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Active Life</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$45.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/bl168-black-01-228x228.webp" alt="BL168 Stealth" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">BL168 Stealth</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Premium Tech</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$89.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div data-testid="rail-covers">
+                                    <div style="--exact-items-in-view:1" data-testid="rail-with-breakpoints">
+                                        <div class="mb-space-32 md:mb-space-48">
+                                            <div class="mb-space-16 flex items-center gap-space-16">
+                                                <h2 class="font-headingSmall text-headingSmall text-text">Premium Covers</h2>
+                                                <div class="ml-auto hidden h-space-32 gap-space-4 md:flex"></div>
+                                            </div>
+                                            <div class="swiper edge-bleed-mobile">
+                                                <div class="swiper-wrapper visible">
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cover/magsafe-hard-clear-magnet-case-for-samsung-s24-ultra.webp" alt="MagSafe Clear Case" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">MagSafe Clear Case</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Case Galaxy</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$25.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cover/momax-caseform-air-magnetic-case-for-iphone-17-pro-max-17-pro-17-air-8.jpg" alt="Momax Caseform Air" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Momax Caseform Air</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Momax Store</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$35.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cover/nillkin-camshield-prop-magnetic-camera-protective-case-for-vivo-x200-ultra-2-5.jpg" alt="Nillkin CamShield Prop" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Nillkin CamShield Prop</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Nillkin Official</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$30.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cover/nillkin-camshield-prop-magnetic-camera-protective-case-for-vivo-x200-ultra-6.jpg" alt="Nillkin CamShield Black" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Nillkin CamShield Black</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Nillkin Official</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$30.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cover/nillkin-camshield-prop-magnetic-camera-protective-cover-case-for-huawei-honor-magic-6-pro-1.jpg" alt="Nillkin CamShield Pro+" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Nillkin CamShield Pro+</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Nillkin Official</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$32.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cover/LUDCF01.jpg" alt="LUDCF Premium Cover" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">LUDCF Premium Cover</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">LUDCF Store</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$40.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div data-testid="rail-accessories">
+                                    <div style="--exact-items-in-view:1" data-testid="rail-with-breakpoints">
+                                        <div class="mb-space-32 md:mb-space-48">
+                                            <div class="mb-space-16 flex items-center gap-space-16">
+                                                <h2 class="font-headingSmall text-headingSmall text-text">Essential Accessories</h2>
+                                                <div class="ml-auto hidden h-space-32 gap-space-4 md:flex"></div>
+                                            </div>
+                                            <div class="swiper edge-bleed-mobile">
+                                                <div class="swiper-wrapper visible">
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/chargers/official-samsung-25w-pd-usb-c-power-adapter-2-300x300.jpg" alt="Samsung 25W Adapter" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Samsung 25W Adapter</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Samsung Official</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$20.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/chargers/official-samsung-45w-5a-usb-c-power-adapter-with-cable-2-300x300.jpg" alt="Samsung 45W Adapter" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Samsung 45W Adapter</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Samsung Official</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$35.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/chargers/official-samsung-pd-25w-usb-c-power-adapter-300x300.jpg" alt="Samsung PD 25W" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Samsung PD 25W</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Samsung Official</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$22.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/chargers/blueo-full-transparent-hd-glass-for-iphone-16-pro-16-pro-max-1-300x300.jpg" alt="Blueo HD Glass" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Blueo HD Glass</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Blueo Store</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$15.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/chargers/kuzoom-iphone-17-pro-17-pro-max-3d-large-curved-edge-glass-film-2-300x300.webp" alt="Kuzoom 3D Glass" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Kuzoom 3D Glass</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Kuzoom Official</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$18.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/chargers/ringke-2-pack-easy-slide-tempered-glass-screen-protectors-for-samsung-s24-ultra-3-300x300.jpg" alt="Ringke Easy Slide" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Ringke Easy Slide</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Ringke Official</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$20.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div data-testid="rail-coolers">
+                                    <div style="--exact-items-in-view:1" data-testid="rail-with-breakpoints">
+                                        <div class="mb-space-32 md:mb-space-48">
+                                            <div class="mb-space-16 flex items-center gap-space-16">
+                                                <h2 class="font-headingSmall text-headingSmall text-text">Gaming Coolers</h2>
+                                                <div class="ml-auto hidden h-space-32 gap-space-4 md:flex"></div>
+                                            </div>
+                                            <div class="swiper edge-bleed-mobile">
+                                                <div class="swiper-wrapper visible">
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cooler/funcooler-pro-br20-01-228x228.webp" alt="FunCooler Pro" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">FunCooler Pro BR20</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Black Shark</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$29.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cooler/back-clip-neo-01-228x228.webp" alt="Back Clip Neo" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Back Clip Neo</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Neo Tech</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$19.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cooler/ex2-pro-1-228x228.webp" alt="EX2 Pro" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">EX2 Pro Cooler</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">X-Cool</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$35.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cooler/ex3-pro-1-228x228.webp" alt="EX3 Pro" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">EX3 Pro Max</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">X-Cool</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$45.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cooler/gletser-pc-10-01-228x228.png" alt="Gletser PC10" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">Gletser PC10</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Ice Tech</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$39.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/cooler/gm26-ambitious-01-228x228.webp" alt="GM26 Ambitious" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">GM26 Ambitious</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Pro Gaming</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$55.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div data-testid="rail-featured">
+                                    <div style="--exact-items-in-view:1" data-testid="rail-with-breakpoints">
+                                        <div class="mb-space-32 md:mb-space-48">
+                                            <div class="mb-space-16 flex items-center gap-space-16">
+                                                <h2 class="font-headingSmall text-headingSmall text-text">Featured Earbuds</h2>
+                                                <div class="ml-auto hidden h-space-32 gap-space-4 md:flex"></div>
+                                            </div>
+                                            <div class="swiper edge-bleed-mobile">
+                                                <div class="swiper-wrapper visible">
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/ew201-228x228.webp" alt="EW201 Wireless" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">EW201 Wireless</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Brand New</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$55.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/ew77-01-228x228.webp" alt="EW77 Crystal" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">EW77 Crystal</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Pure Sound</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$65.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/t13-pro-01-228x228.webp" alt="T13 Pro Max" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">T13 Pro Max</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Max Audio</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$75.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/t28-pro-01-228x228.webp" alt="T28 Sport" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">T28 Sport</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Active Plus</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$48.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/t29-pro-01-228x228.webp" alt="T29 Ultra" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">T29 Ultra</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Ultra Sound</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$82.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="swiper-slide mr-space-8 p-none md:mr-space-16 last:mr-0 !w-[calc(100%/2.15-((8px*1.15)/2.15))] sm:!w-[calc(100%/3-((16px*2)/3))] md:!w-[calc(100%/4-((16px*3)/4))] lg:!w-[calc(100%/6-((16px*5)/6))]">
+                                                        <a href="#" class="flex flex-1 flex-col gap-space-8 group">
+                                                            <div class="aspect-square rounded-radius-16 overflow-hidden bg-bg-fill-secondary border border-border-image">
+                                                                <img src="/products/earbuds/t50-01-228x228.webp" alt="T50 Pro" class="size-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text line-clamp-1">T50 Pro</p>
+                                                                <p class="font-caption text-caption text-text-tertiary">Professional</p>
+                                                                <p class="font-bodySmallMedium text-bodySmallMedium text-text mt-space-4">$99.00</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                      <div inert="" data-testid="desktop-search-wrapper"
+                        class="fixed inset-x-0 bottom-space-36 z-[60] mx-auto max-w-[600px] px-space-16 transition-transform duration-300 ease-in-out hidden lg:block translate-y-[200%]">
+                        <div class="hidden lg:flex rounded-[32px] p-space-8 lg:w-full lg:overflow-hidden lg:bg-[rgba(255,255,255,0.9)] lg:[box-shadow:0px_4px_24px_0_rgba(0,0,0,0.12),0_0_0_4.5px_rgba(0,0,0,0.03)] lg:backdrop-blur-lg [box-shadow:0px_4px_24px_0_rgba(0,0,0,0.12)] outline-none flex-col">
+                            <!-- SUGGESTIONS FIRST — expands upward (card grows up since wrapper is fixed-bottom) -->
+                            <div id="scroll-suggestions-panel"
+                                style="max-height:0;overflow:hidden;transition:max-height 220ms cubic-bezier(0.4,0,0.2,1),opacity 220ms cubic-bezier(0.4,0,0.2,1);opacity:0;pointer-events:none;">
+                                <div class="relative overflow-hidden bg-transparent">
+                                    <div class="h-auto min-h-0 w-full">
+                                        <div class="lg:relative lg:h-full lg:pb-space-0">
+                                            <p class="font-captionMedium text-captionMedium my-space-8 mb-space-4 text-text-tertiary px-space-16">Suggested searches</p>
+                                            <ul class="flex flex-col gap-space-4 px-space-8">
+                                                <li role="button" class="scroll-suggestion-item group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden">
+                                                    <div class="flex w-full min-w-0 items-center gap-space-16">
+                                                        <div class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-text opacity-60" data-testid="icon-search" style="width:20px;height:20px" stroke="none"><path d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z" stroke="currentColor" stroke-width="2.67" stroke-linecap="round"></path></svg>
+                                                        </div>
+                                                        <div class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                            <p class="font-bodySmall text-bodySmall">Plant-based protein powders</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li role="button" class="scroll-suggestion-item group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden">
+                                                    <div class="flex w-full min-w-0 items-center gap-space-16">
+                                                        <div class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-text opacity-60" data-testid="icon-search" style="width:20px;height:20px" stroke="none"><path d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z" stroke="currentColor" stroke-width="2.67" stroke-linecap="round"></path></svg>
+                                                        </div>
+                                                        <div class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                            <p class="font-bodySmall text-bodySmall">Vegan leather handbags</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li role="button" class="scroll-suggestion-item group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden">
+                                                    <div class="flex w-full min-w-0 items-center gap-space-16">
+                                                        <div class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-text opacity-60" data-testid="icon-search" style="width:20px;height:20px" stroke="none"><path d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z" stroke="currentColor" stroke-width="2.67" stroke-linecap="round"></path></svg>
+                                                        </div>
+                                                        <div class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                            <p class="font-bodySmall text-bodySmall">Bedroom decor</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li role="button" class="scroll-suggestion-item group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden">
+                                                    <div class="flex w-full min-w-0 items-center gap-space-16">
+                                                        <div class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-text opacity-60" data-testid="icon-search" style="width:20px;height:20px" stroke="none"><path d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z" stroke="currentColor" stroke-width="2.67" stroke-linecap="round"></path></svg>
+                                                        </div>
+                                                        <div class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                            <p class="font-bodySmall text-bodySmall">Waterproof jackets</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li role="button" class="scroll-suggestion-item group flex cursor-pointer items-center justify-between rounded-radius-max p-space-4 hover:bg-bg-overlay-fixed-dark-04 overflow-hidden">
+                                                    <div class="flex w-full min-w-0 items-center gap-space-16">
+                                                        <div class="flex size-space-32 shrink-0 items-center justify-center p-space-6">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-text opacity-60" data-testid="icon-search" style="width:20px;height:20px" stroke="none"><path d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z" stroke="currentColor" stroke-width="2.67" stroke-linecap="round"></path></svg>
+                                                        </div>
+                                                        <div class="flex h-auto min-h-space-24 min-w-0 items-center pr-space-10">
+                                                            <p class="font-bodySmall text-bodySmall">Hoodies</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                            <div class="px-space-16">
+                                                <a href="https://www.shopify.com/legal/privacy/consumers" target="_blank">
+                                                    <p class="font-caption text-caption text-text-tertiary">Learn more about how we use your data to personalize your experience and ads. Recommendations are for informational purposes only.</p>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- INPUT LAST — always visible at bottom of card -->
+                            <form id="scroll-search-form" onsubmit="return false;">
+                                <div class="flex flex-row gap-space-16 bg-bg-fill rounded-[32px] lg:!bg-transparent lg:block shadow-m shadow-none p-space-4 lg:p-space-0 lg:shadow-none">
+                                    <div class="relative flex w-full flex-col items-center lg:h-space-48">
+                                        <input id="scroll-search-input" type="search" autocomplete="off"
+                                            aria-label="Search products and stores"
+                                            placeholder="What are you shopping for today?"
+                                            class="lg:bg-overlay-fixed-light-75 h-space-48 w-full bg-transparent px-space-16 py-space-4 text-text lg:rounded-radius-max placeholder:text-text placeholder:opacity-60 lg:pl-space-20 lg:pr-space-48 lg:placeholder:text-center lg:focus:border lg:focus:border-border-secondary lg:focus:bg-bg-overlay-fixed-light-75 lg:focus:shadow-s placeholder:text-center focus:outline-none"
+                                            name="search" value="" />
+                                        <div class="z-10 flex h-space-48 justify-end p-space-4 absolute right-0 w-space-48">
+                                            <button type="submit"
+                                                class="group flex size-space-40 items-center justify-center rounded-radius-max bg-bg-brand shadow-[0_4px_24px_0_rgba(69,36,219,0.34)] active:scale-95 lg:absolute lg:right-space-4"
+                                                aria-label="Search">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                                    class="text-text-inverse group-hover:scale-105 block"
+                                                    style="width:20px;height:20px" stroke="none">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.67" d="m14 6 6 6m0 0-6 6m6-6H4"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <button type="button" data-testid="scroll-search-button-mobile"
+                        class="border-[2px] border-bg-overlay-fixed-dark-04 shadow-l backdrop-blur-[4px] flex size-space-48 items-center justify-center fixed bottom-[86px] right-space-16 !z-[59] [box-shadow:inset_0_0_0_1.5px_rgba(255,255,255,1)] rounded-radius-max bg-[rgba(255,255,255,0.9)] active:scale-95 lg:hidden transition-transform duration-300 ease-in-out translate-y-0">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            class="text-text-tertiary" data-testid="icon-search" style="width:20px;height:20px"
+                            stroke="none">
+                            <path
+                                d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"
+                                stroke="currentColor" stroke-width="2.67" stroke-linecap="round"></path>
+                        </svg>
+                    </button>
+                </div>
+                <footer data-testid="footer" class="z-10 w-full pb-space-32 pt-space-48 transition-all md:pt-[136px]">
+                    <div class="_pageLayout_12g22_12 page-layout-root mb-space-48 md:mb-space-0"
+                        style="--page-content-max:2000px" data-layout="feed">
+                        <div class="lg:mb-space-8 lg:flex">
+                            <div class="lg:w-5/12">
+                                <div>
+                                    <svg width="101" height="42" viewBox="0 0 101 42" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="mb-space-8 mr-auto h-space-24 w-[auto] text-text-tertiary">
+                                        <title>Shop</title>
+                                        <path
+                                            d="M12.0288 18.2598C7.97006 17.3793 6.16191 17.0348 6.16191 15.4708C6.16191 13.9997 7.38555 13.2669 9.83283 13.2669C11.9851 13.2669 13.5584 14.2075 14.7165 16.0504C14.8039 16.1926 14.9841 16.2418 15.1316 16.1653L19.6984 13.8575C19.8623 13.7755 19.9224 13.5677 19.8295 13.4091C17.934 10.1224 14.4324 8.32324 9.82191 8.32324C3.76379 8.32324 0 11.3091 0 16.0559C0 21.098 4.58319 22.3722 8.64743 23.2527C12.7117 24.1331 14.5253 24.4776 14.5253 26.0417C14.5253 27.6057 13.2033 28.344 10.5648 28.344C8.12848 28.344 6.32033 27.2284 5.22779 25.0628C5.14585 24.9042 4.95466 24.8386 4.79624 24.9206L0.240358 27.1791C0.0819403 27.2612 0.0163881 27.4526 0.0983284 27.6166C1.90648 31.2533 5.61564 33.2986 10.5703 33.2986C16.8797 33.2986 20.6927 30.3619 20.6927 25.4675C20.6927 20.573 16.0876 19.1512 12.0288 18.2707V18.2598Z"
+                                            fill="currentColor"></path>
+                                        <path
+                                            d="M36.5018 8.32341C33.9125 8.32341 31.6236 9.24214 29.9794 10.8773C29.8756 10.9757 29.7062 10.9046 29.7062 10.7624V0.322772C29.7062 0.142307 29.5642 0.00012207 29.3839 0.00012207H23.67C23.4897 0.00012207 23.3477 0.142307 23.3477 0.322772V32.7245C23.3477 32.905 23.4897 33.0472 23.67 33.0472H29.3839C29.5642 33.0472 29.7062 32.905 29.7062 32.7245V18.5115C29.7062 15.7662 31.8094 13.6608 34.6445 13.6608C37.4796 13.6608 39.5336 15.7225 39.5336 18.5115V32.7245C39.5336 32.905 39.6756 33.0472 39.8559 33.0472H45.5699C45.7501 33.0472 45.8922 32.905 45.8922 32.7245V18.5115C45.8922 12.5397 41.9809 8.32887 36.5018 8.32887V8.32341Z"
+                                            fill="currentColor"></path>
+                                        <path
+                                            d="M57.4962 7.39915C54.3934 7.39915 51.4764 8.34522 49.3896 9.71785C49.2476 9.81082 49.1984 10.0022 49.2858 10.1499L51.8041 14.4537C51.897 14.6068 52.0937 14.6615 52.2466 14.5685C53.8308 13.6115 55.6444 13.1139 57.4962 13.1248C62.4837 13.1248 66.1491 16.6466 66.1491 21.3005C66.1491 25.2652 63.2157 28.2019 59.4956 28.2019C56.4638 28.2019 54.3607 26.4355 54.3607 23.9418C54.3607 22.5145 54.967 21.3442 56.5457 20.5184C56.7096 20.4309 56.7697 20.2286 56.6714 20.07L54.2951 16.0451C54.2186 15.9138 54.0548 15.8537 53.9073 15.9084C50.7225 17.0896 48.4883 19.9333 48.4883 23.7504C48.4883 29.5253 53.0824 33.8346 59.4901 33.8346C66.974 33.8346 72.3548 28.6448 72.3548 21.202C72.3548 13.2233 66.0945 7.39368 57.4853 7.39368L57.4962 7.39915Z"
+                                            fill="currentColor"></path>
+                                        <path
+                                            d="M89.0635 8.27964C86.1738 8.27964 83.5954 9.34603 81.7108 11.2272C81.607 11.3311 81.4376 11.2546 81.4376 11.1124V8.84838C81.4376 8.66791 81.2956 8.52573 81.1153 8.52573H75.5489C75.3686 8.52573 75.2266 8.66791 75.2266 8.84838V41.2009C75.2266 41.3814 75.3686 41.5236 75.5489 41.5236H81.2628C81.4431 41.5236 81.5851 41.3814 81.5851 41.2009V30.5917C81.5851 30.4495 81.7545 30.3784 81.8583 30.4714C83.7374 32.2214 86.2229 33.244 89.069 33.244C95.7717 33.244 101 27.8137 101 20.7591C101 13.7045 95.7663 8.27417 89.069 8.27417L89.0635 8.27964ZM87.9874 27.7644C84.1744 27.7644 81.2847 24.7293 81.2847 20.7153C81.2847 16.7014 84.169 13.6663 87.9874 13.6663C91.8058 13.6663 94.6846 16.6521 94.6846 20.7153C94.6846 24.7786 91.844 27.7644 87.9819 27.7644H87.9874Z"
+                                            fill="currentColor"></path>
+                                    </svg>
+                                    <div class="grid md:grid-cols-2">
+                                        <p class="font-bodySmall text-bodySmall mb-space-32 mr-auto text-text-tertiary">
+                                            Shop is the next step on our mission to make commerce better for everyone.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="mb-space-32 flex gap-space-8">
+                                    <div data-testid="download-qr-code"
+                                        class="items-center justify-center rounded-radius-8 bg-bg-fill-inverse hidden lg:flex"
+                                        style="width:92px;height:92px">
+                                        <img data-testid="qr-image" alt="" style="background-size:cover"
+                                            src="/qr/u/download.png"
+                                            width="88" height="88" />
+                                    </div>
+                                    <div class="mb-space-32 hidden gap-space-10 pt-[1px] md:flex lg:flex-col">
+                                        <a data-testid="download-apple-store-link"
+                                            aria-label="Download on the App Store" role="link" tabindex="0"
+                                            href="https://open.shop.app/E2jp6/yphyl/7qog?sid=859e041f-c9ef-4324-9e1c-0c2adb52ff88">
+                                            <img src="/shopifycloud/shop-client/production/assets/apple-badge-light-QLcYWftF.svg"
+                                                class="h-space-40" alt="Download Shop" />
+                                        </a>
+                                        <a data-testid="download-play-store-link" aria-label="Download on Google Play"
+                                            role="link" tabindex="0"
+                                            href="https://open.shop.app/E2jp6/frmk/3n2h?sid=859e041f-c9ef-4324-9e1c-0c2adb52ff88">
+                                            <img src="/shopifycloud/shop-client/production/assets/google-badge-light-BMF1GKqE.svg"
+                                                class="h-space-40" alt="Download Shop" />
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="md:mb-space-16 md:flex lg:w-7/12">
+                                <nav class="mb-space-32 max-w-[200px] md:w-1/4 lg:w-1/4" aria-label="Start selling">
+                                    <p class="font-bodySmall text-bodySmall mb-space-8 text-text">Start selling</p>
+                                    <a href="https://www.shopify.com/shop?utm_medium=website&amp;utm_source=shop-website&amp;utm_campaign=shop_app_footer_for_brands"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            For brands</p>
+                                    </a>
+                                    <a href="https://www.shopify.com/collabs/creators?utm_medium=website&amp;utm_source=shop-website&amp;utm_campaign=shop_app_footer_for_creators"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            For creators</p>
+                                    </a>
+                                    <a href="https://www.shopify.com/free-trial?utm_medium=website&amp;utm_source=shop-website&amp;utm_campaign=shop_app_footer_build_your_store"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            Build your store</p>
+                                    </a>
+                                </nav>
+                                <nav class="mb-space-32 max-w-[200px] md:w-1/4 lg:w-1/4" aria-label="Information">
+                                    <p class="font-bodySmall text-bodySmall mb-space-8 text-text">Information</p>
+                                    <a href="https://shop.app/shop-pay?utm_medium=website&amp;utm_source=shop-website"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            Shop Pay</p>
+                                    </a>
+                                    <a href="https://help.shop.app/shop?utm_medium=website&amp;utm_source=shop-website"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            Help center</p>
+                                    </a>
+                                </nav>
+                                <nav class="mb-space-32 max-w-[200px] md:w-1/4 lg:w-1/4" aria-label="Social">
+                                    <p class="font-bodySmall text-bodySmall mb-space-8 text-text">Social</p>
+                                    <a href="https://twitter.com/shop?utm_medium=website&amp;utm_source=shop-website"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            X (Twitter)</p>
+                                    </a>
+                                    <a href="https://instagram.com/shopapp?utm_medium=website&amp;utm_source=shop-website"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            Instagram</p>
+                                    </a>
+                                </nav>
+                                <nav class="mb-space-32 max-w-[200px] md:w-1/4 lg:w-1/4" aria-label="Legal">
+                                    <p class="font-bodySmall text-bodySmall mb-space-8 text-text">Legal</p>
+                                    <a href="/terms-of-service?locale=en-US" target="_blank" data-discover="true">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            Terms of Service</p>
+                                    </a>
+                                    <a href="https://www.shopify.com/legal/privacy/app-users?utm_medium=website&amp;utm_source=shop-website"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            Privacy Policy</p>
+                                    </a>
+                                    <a href="https://privacy.shopify.com/?utm_medium=website&amp;utm_source=shop-website"
+                                        target="_blank">
+                                        <p
+                                            class="font-bodySmall text-bodySmall mb-space-8 text-text-tertiary hover:text-text">
+                                            Your Privacy Choices
+                                            <!-- -->
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 14"
+                                                xml:space="preserve" aria-hidden="true" class="inline-block"
+                                                style="height:1.1em;width:auto;vertical-align:-0.2em">
+                                                <path
+                                                    d="M7.4 12.8h6.8l3.1-11.6H7.4C4.2 1.2 1.6 3.8 1.6 7s2.6 5.8 5.8 5.8z"
+                                                    style="fill-rule:evenodd;clip-rule:evenodd;fill:#fff"></path>
+                                                <path
+                                                    d="M22.6 0H7.4c-3.9 0-7 3.1-7 7s3.1 7 7 7h15.2c3.9 0 7-3.1 7-7s-3.2-7-7-7zm-21 7c0-3.2 2.6-5.8 5.8-5.8h9.9l-3.1 11.6H7.4c-3.2 0-5.8-2.6-5.8-5.8z"
+                                                    style="fill-rule:evenodd;clip-rule:evenodd;fill:#06f"></path>
+                                                <path
+                                                    d="M24.6 4c.2.2.2.6 0 .8L22.5 7l2.2 2.2c.2.2.2.6 0 .8-.2.2-.6.2-.8 0l-2.2-2.2-2.2 2.2c-.2.2-.6.2-.8 0-.2-.2-.2-.6 0-.8L20.8 7l-2.2-2.2c-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0l2.2 2.2L23.8 4c.2-.2.6-.2.8 0z"
+                                                    style="fill:#fff"></path>
+                                                <path
+                                                    d="M12.7 4.1c.2.2.3.6.1.8L8.6 9.8c-.1.1-.2.2-.3.2-.2.1-.5.1-.7-.1L5.4 7.7c-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0L8 8.6l3.8-4.5c.2-.2.6-.2.9 0z"
+                                                    style="fill:#06f"></path>
+                                            </svg>
+                                        </p>
+                                    </a>
+                                </nav>
+                            </div>
+                        </div>
+                        <div class="mb-space-64 lg:mb-space-0">
+                            <hr class="border-none bg-border-tertiary h-[1px] mb-space-24 lg:mb-space-32" />
+                            <div class="flex flex-col justify-between gap-space-16 md:flex-row"
+                                data-testid="sub-footer">
+                                <div class="flex flex-row flex-wrap items-center gap-space-8">
+                                    <div class="flex flex-row items-center gap-space-4">
+                                        <p class="font-captionBold text-captionBold mr-space-2 text-[#7B7B7B]">Powered
+                                            by</p>
+                                        <svg width="63" height="18" viewBox="0 0 63 18" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <mask id="mask0_4_20" style="mask-type:luminance" maskUnits="userSpaceOnUse"
+                                                x="0" y="0" width="63" height="18">
+                                                <path d="M63 0H0V18H63V0Z" fill="white"></path>
+                                            </mask>
+                                            <g mask="url(#mask0_4_20)">
+                                                <path
+                                                    d="M13.5324 3.41596C13.5198 3.32772 13.4442 3.2773 13.3812 3.2773C13.3182 3.2773 12.0708 3.25209 12.0708 3.25209C12.0708 3.25209 11.025 2.24369 10.9242 2.13024C10.8234 2.0294 10.6218 2.05461 10.5462 2.07982C10.5462 2.07982 10.3446 2.14285 10.017 2.24369C9.9666 2.06722 9.8784 1.85293 9.765 1.62604C9.3996 0.920158 8.8452 0.542007 8.19 0.542007C8.1396 0.542007 8.1018 0.542007 8.0514 0.554612C8.0262 0.529402 8.0136 0.504192 7.9884 0.491587C7.6986 0.189066 7.3332 0.0378055 6.8922 0.0504105C6.048 0.0756206 5.2038 0.693268 4.5108 1.7773C4.032 2.54621 3.6666 3.50419 3.5532 4.24789C2.583 4.55041 1.9026 4.7647 1.8774 4.7647C1.386 4.91596 1.3734 4.92856 1.3104 5.39495C1.2852 5.74789 0 15.6933 0 15.6933L10.7856 17.5588L15.4602 16.3991C15.4476 16.3991 13.545 3.50419 13.5324 3.41596ZM9.4752 2.42016C9.2232 2.49579 8.946 2.58402 8.6436 2.68486C8.6436 2.25629 8.5806 1.65125 8.3916 1.14705C9.0342 1.24789 9.3492 1.97898 9.4752 2.42016ZM8.0766 2.84873C7.5096 3.0252 6.8922 3.21428 6.2748 3.40335C6.4512 2.73528 6.7788 2.07982 7.182 1.63865C7.3332 1.47478 7.5474 1.29831 7.7868 1.19747C8.0388 1.68907 8.0892 2.38234 8.0766 2.84873ZM6.9174 0.617637C7.119 0.617637 7.2828 0.655453 7.4214 0.756293C7.1946 0.869738 6.9678 1.04621 6.7662 1.2731C6.2244 1.85293 5.8086 2.74789 5.6448 3.61764C5.1282 3.7815 4.6242 3.93276 4.1706 4.07142C4.473 2.69747 5.6196 0.655453 6.9174 0.617637Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M13.3808 3.27728C13.3178 3.27728 12.0704 3.25207 12.0704 3.25207C12.0704 3.25207 11.0246 2.24367 10.9238 2.13022C10.886 2.09241 10.8356 2.0672 10.7852 2.0672V17.5588L15.4598 16.3991C15.4598 16.3991 13.5572 3.50417 13.5446 3.41594C13.5194 3.3277 13.4438 3.27728 13.3808 3.27728Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M8.18976 5.68484L7.64796 7.71425C7.64796 7.71425 7.04316 7.43694 6.32496 7.48736C5.26656 7.55039 5.26656 8.21845 5.26656 8.38232C5.32956 9.28988 7.71096 9.49156 7.84956 11.6218C7.95036 13.2983 6.96756 14.4453 5.53116 14.5336C3.81756 14.6218 2.87256 13.6134 2.87256 13.6134L3.23796 12.063C3.23796 12.063 4.19556 12.7815 4.95156 12.7311C5.44296 12.7058 5.63196 12.2899 5.60676 12.0126C5.53116 10.8277 3.59076 10.9033 3.46476 8.94955C3.36396 7.31089 4.43496 5.65963 6.80376 5.50837C7.72356 5.44534 8.18976 5.68484 8.18976 5.68484Z"
+                                                    fill="white"></path>
+                                                <path d="M10.836 2.01678H10.584V17.6471H10.836V2.01678Z" fill="white">
+                                                </path>
+                                                <path
+                                                    d="M21.7852 10.0084C21.2434 9.71849 20.9662 9.46639 20.9662 9.12606C20.9662 8.69748 21.3568 8.42017 21.9616 8.42017C22.6672 8.42017 23.2972 8.71009 23.2972 8.71009L23.7886 7.19748C23.7886 7.19748 23.335 6.84454 21.9994 6.84454C20.1346 6.84454 18.8368 7.91597 18.8368 9.41597C18.8368 10.2731 19.4416 10.916 20.248 11.3824C20.9032 11.7479 21.13 12.0126 21.13 12.4034C21.13 12.8067 20.8024 13.1345 20.1976 13.1345C19.303 13.1345 18.4462 12.6681 18.4462 12.6681L17.917 14.1807C17.917 14.1807 18.6982 14.7101 20.0212 14.7101C21.9364 14.7101 23.3224 13.7647 23.3224 12.063C23.3098 11.1429 22.6168 10.4874 21.7852 10.0084Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M29.421 6.81932C28.476 6.81932 27.7326 7.2731 27.1656 7.95378L27.1404 7.94117L27.9594 3.65546H25.83L23.751 14.5714H25.8804L26.586 10.8403C26.8632 9.42857 27.594 8.55882 28.274 8.55882C28.753 8.55882 28.942 8.88655 28.942 9.35293C28.942 9.64285 28.917 10.0084 28.854 10.2983L28.048 14.5714H30.177L31.009 10.1597C31.097 9.69327 31.16 9.13865 31.16 8.7605C31.172 7.55041 30.542 6.81932 29.421 6.81932Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M35.9981 6.81934C33.4281 6.81934 31.7271 9.13866 31.7271 11.7227C31.7271 13.374 32.7471 14.7101 34.6621 14.7101C37.1821 14.7101 38.8831 12.4538 38.8831 9.80673C38.8961 8.28152 38.0011 6.81934 35.9981 6.81934ZM34.9521 13.084C34.2211 13.084 33.9191 12.4664 33.9191 11.6849C33.9191 10.4622 34.5491 8.4706 35.7081 8.4706C36.4641 8.4706 36.7161 9.12606 36.7161 9.75631C36.7161 11.0672 36.0741 13.084 34.9521 13.084Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M44.3521 6.81934C42.9151 6.81934 42.0961 8.09245 42.0961 8.09245H42.0711L42.1971 6.94539H40.3071C40.2191 7.71429 40.0431 8.89917 39.8791 9.78152L38.3921 17.5966H40.5211L41.1141 14.4328H41.1641C41.1641 14.4328 41.6051 14.7101 42.4111 14.7101C44.9191 14.7101 46.5571 12.1387 46.5571 9.54203C46.5571 8.10505 45.9141 6.81934 44.3521 6.81934ZM42.3111 13.1093C41.7561 13.1093 41.4291 12.7941 41.4291 12.7941L41.7811 10.8025C42.0331 9.46639 42.7261 8.58404 43.4701 8.58404C44.1251 8.58404 44.3271 9.18908 44.3271 9.75631C44.3271 11.1429 43.5081 13.1093 42.3111 13.1093Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M49.606 3.75629C48.926 3.75629 48.384 4.2983 48.384 4.99158C48.384 5.62183 48.787 6.06301 49.392 6.06301H49.417C50.085 6.06301 50.652 5.60923 50.664 4.82772C50.664 4.21007 50.249 3.75629 49.606 3.75629Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M46.6201 14.5588H48.7491L50.1981 6.99579H48.0561L46.6201 14.5588Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M55.6291 6.9832H54.1421L54.2181 6.63026C54.3441 5.89917 54.7721 5.25631 55.4901 5.25631C55.8681 5.25631 56.1711 5.36976 56.1711 5.36976L56.5861 3.69329C56.5861 3.69329 56.2211 3.50421 55.4271 3.50421C54.6711 3.50421 53.9151 3.7185 53.3361 4.21009C52.6051 4.82774 52.2651 5.7227 52.1011 6.63026L52.0381 6.9832H51.0421L50.7271 8.59665H51.7231L50.5891 14.5714H52.7181L53.8521 8.59665H55.3261L55.6291 6.9832Z"
+                                                    fill="#707070"></path>
+                                                <path
+                                                    d="M60.7699 6.99579C60.7699 6.99579 59.4339 10.3613 58.8419 12.2017H58.8169C58.7789 11.6092 58.2869 6.99579 58.2869 6.99579H56.0449L57.3299 13.9412C57.3549 14.0924 57.3419 14.1933 57.2789 14.2941C57.0269 14.7731 56.6119 15.2395 56.1199 15.5798C55.7169 15.8697 55.2629 16.0588 54.9109 16.1849L55.5029 18C55.9309 17.9118 56.8379 17.5462 57.5939 16.8403C58.5649 15.9328 59.4719 14.521 60.3919 12.605L62.9999 6.99579H60.7699Z"
+                                                    fill="#707070"></path>
+                                            </g>
+                                        </svg>
+                                    </div>
+                                    <p class="font-caption text-caption text-text-tertiary">|</p>
+                                    <a data-testid="start-selling-link"
+                                        href="https://www.shopify.com/free-trial?utm_medium=website&amp;utm_source=shop-website&amp;utm_campaign=shop_app_subfooter_start_selling"
+                                        target="_blank">
+                                        <p class="font-caption text-caption text-text-tertiary">Start selling for free
+                                        </p>
+                                    </a>
+                                </div>
+                                <div class="flex flex-col gap-space-16 md:flex-row">
+                                    <a data-testid="language-settings-link" href="/language-settings"
+                                        data-discover="true">
+                                        <p class="font-caption text-caption text-text-tertiary">Language</p>
+                                    </a>
+                                    <p class="font-caption text-caption text-text-tertiary">© Shopify Inc. 2026</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </footer>
+            </div>
+        </div>
+    </div>
+        ` }}
+      />
+    </>
+  );
+}
